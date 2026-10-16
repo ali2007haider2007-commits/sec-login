@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKY-SEC ENTERPRISE | Boss Security & Attendance OS</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts (Cairo) -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { cairo: ['Cairo', 'sans-serif'] },
+                    colors: {
+                        sec: {
+                            bg: '#080e1a',
+                            panel: '#0f172a',
+                            border: '#1e293b',
+                            sky: '#0ea5e9',
+                            cyan: '#38bdf8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #080e1a;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        .sec-card {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+        }
+
+        .sec-card:hover {
+            border-color: rgba(14, 165, 233, 0.4);
+        }
+
+        @keyframes alertFlash {
+            0%, 100% { border-color: #ef4444; background-color: rgba(153, 27, 27, 0.15); }
+            50% { border-color: #f87171; background-color: rgba(153, 27, 27, 0.35); }
+        }
+        .emergency-alert {
+            animation: alertFlash 1s infinite;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #080e1a; }
+        ::-webkit-scrollbar-thumb { background: #0284c7; border-radius: 9999px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-sky-500 selection:text-slate-950">
+
+    <!-- 🚨 شريط الإنذار الطارئ -->
+    <div id="emergencyBanner" class="hidden fixed top-0 inset-x-0 z-50 bg-red-950 border-b-2 border-red-500 px-6 py-3 shadow-2xl">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <span class="w-10 h-10 rounded-lg bg-red-600 flex items-center justify-center text-white animate-bounce">
+                    <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                </span>
+                <div>
+                    <h3 class="font-black text-white text-base">إنذار أمني طارئ: تم رصد محاولة عبور غير مصرح بها!</h3>
+                    <p id="emergencyText" class="text-red-200 text-xs font-semibold"></p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="resolveEmergency()" class="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl shadow transition">
+                    <i class="fa-solid fa-crown ml-1"></i> تجاوز بأمر الـ Boss (سماح)
+                </button>
+                <button onclick="dismissEmergency()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white border border-red-400/40 font-bold text-xs rounded-xl transition">
+                    إيقاف الإنذار وتأمين البوابة
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-1">
+        <!-- 👑 القائمة الجانبية للـ Boss -->
+        <aside class="w-72 sec-card border-l border-slate-800 flex flex-col justify-between shrink-0 sticky top-0 h-screen z-30">
+            <div>
+                <!-- الشعار -->
+                <div class="p-5 border-b border-slate-800 flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center shadow-md">
+                        <i class="fa-solid fa-shield-halved text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-black text-base text-white tracking-wide">SKY-SEC <span class="text-sky-400">OS</span></h1>
+                        <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                            <i class="fa-solid fa-crown ml-1 text-[9px]"></i> BOSS ADMIN
+                        </span>
+                    </div>
+                </div>
+
+                <!-- الوقت الحي -->
+                <div class="p-4 mx-4 mt-4 rounded-xl bg-slate-900 border border-slate-800">
+                    <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                        <span>التوقيت المحلي</span>
+                        <span id="liveClock" class="font-mono font-bold text-sky-400">00:00:00</span>
+                    </div>
+                    <div class="text-[11px] text-emerald-400 font-semibold flex items-center gap-1.5 mt-2">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        النظام يعمل بكفاءة تامة
+                    </div>
+                </div>
+
+                <!-- الأقسام -->
+                <nav class="p-4 space-y-1.5 text-sm font-bold">
+                    <button onclick="switchTab('dashboard')" id="tab-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                        <i class="fa-solid fa-chart-pie w-5 text-center"></i> لوحة التحكم والسجلات
+                    </button>
+                    <button onclick="switchTab('cameras')" id="tab-cameras" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800/60 transition">
+                        <i class="fa-solid fa-video w-5 text-center text-sky-400"></i> كاميرات المراقبة (CCTV)
+                    </button>
+                    <button onclick="switchTab('lectures')" id="tab-lectures" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800/60 transition">
+                        <i class="fa-solid fa-graduation-cap w-5 text-center text-emerald-400"></i> الحضور والأقسام الأكاديمية
+                    </button>
+                    <button onclick="switchTab('companies')" id="tab-companies" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800/60 transition">
+                        <i class="fa-solid fa-building-user w-5 text-center text-purple-400"></i> الشركات والعلماء (VIP)
+                    </button>
+                </nav>
+            </div>
+
+            <!-- أجراءات الـ Boss -->
+            <div class="p-4 border-t border-slate-800 space-y-2">
+                <button onclick="openAddModal()" class="w-full py-2.5 px-4 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 transition shadow">
+                    <i class="fa-solid fa-user-plus"></i> تسجيل دخول شخص جديد
+                </button>
+                <button onclick="triggerSimulatedIntruder()" class="w-full py-2 px-4 rounded-xl bg-red-500/15 hover:bg-red-500/30 text-red-300 border border-red-500/30 font-bold text-xs flex items-center justify-center gap-2 transition">
+                    <i class="fa-solid fa-triangle-exclamation"></i> محاكاة إنذار دخيل فوري
+                </button>
+            </div>
+        </aside>
+
+        <!-- المحتوى الرئيسي -->
+        <main class="flex-1 p-6 lg:p-8 space-y-6 overflow-y-auto">
+            
+            <header class="sec-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-black text-white">نظام إدارة الأمن والحضور المركزي</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">تحكم كامل بصلاحيات المدير الأعلى (Boss) في مراقبة الأوقات، الحضور، والزوار.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="exportCSVReport()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold flex items-center gap-2">
+                        <i class="fa-solid fa-file-excel text-emerald-400"></i> تصدير تقرير الحضور (CSV)
+                    </button>
+                </div>
+            </header>
+
+            <!-- 📊 قسم لوحة التحكم -->
+            <section id="section-dashboard" class="space-y-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="sec-card rounded-2xl p-4 border-r-4 border-r-sky-500">
+                        <span class="text-xs text-slate-400 font-bold">إجمالي المتواجدون حالياً</span>
+                        <div id="statInside" class="text-3xl font-black text-white mt-1">0</div>
+                        <span class="text-[11px] text-emerald-400 font-semibold mt-1 inline-block">داخل المبنى</span>
+                    </div>
+                    <div class="sec-card rounded-2xl p-4 border-r-4 border-r-emerald-500">
+                        <span class="text-xs text-slate-400 font-bold">حضور الطلبة اليوم</span>
+                        <div id="statStudents" class="text-3xl font-black text-white mt-1">0</div>
+                        <span class="text-[11px] text-sky-400 font-semibold mt-1 inline-block">مسجل نظامياً</span>
+                    </div>
+                    <div class="sec-card rounded-2xl p-4 border-r-4 border-r-purple-500">
+                        <span class="text-xs text-slate-400 font-bold">العلماء والشركات (VIP)</span>
+                        <div id="statVips" class="text-3xl font-black text-white mt-1">0</div>
+                        <span class="text-[11px] text-purple-400 font-semibold mt-1 inline-block">تصاريح خاصة</span>
+                    </div>
+                    <div class="sec-card rounded-2xl p-4 border-r-4 border-r-red-500">
+                        <span class="text-xs text-slate-400 font-bold">التنبيهات والاختراقات</span>
+                        <div id="statAlerts" class="text-3xl font-black text-red-400 mt-1">0</div>
+                        <span class="text-[11px] text-red-300 font-semibold mt-1 inline-block">تحت الرقابة</span>
+                    </div>
+                </div>
+
+                <div class="sec-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex flex-wrap items-center gap-2 text-xs font-bold">
+                        <button onclick="filterRecords('all')" class="filter-btn px-4 py-2 rounded-xl bg-sky-500 text-slate-950 transition" data-f="all">الكل</button>
+                        <button onclick="filterRecords('طالب')" class="filter-btn px-4 py-2 rounded-xl bg-slate-900 text-slate-300 hover:bg-slate-800 transition" data-f="طالب">الطلبة</button>
+                        <button onclick="filterRecords('عالم')" class="filter-btn px-4 py-2 rounded-xl bg-slate-900 text-slate-300 hover:bg-slate-800 transition" data-f="عالم">العلماء</button>
+                        <button onclick="filterRecords('شركة')" class="filter-btn px-4 py-2 rounded-xl bg-slate-900 text-slate-300 hover:bg-slate-800 transition" data-f="شركة">الشركات</button>
+                        <button onclick="filterRecords('زائر')" class="filter-btn px-4 py-2 rounded-xl bg-slate-900 text-slate-300 hover:bg-slate-800 transition" data-f="زائر">الزوار</button>
+                    </div>
+
+                    <div class="relative w-full sm:w-72">
+                        <i class="fa-solid fa-magnifying-glass absolute right-3.5 top-3 text-slate-400 text-xs"></i>
+                        <input id="searchInput" oninput="renderTable()" type="text" placeholder="بحث بالاسم أو البوابة..." class="w-full bg-slate-900 border border-slate-800 rounded-xl pr-9 pl-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500">
+                    </div>
+                </div>
+
+                <div class="sec-card rounded-2xl overflow-hidden">
+                    <div class="p-4 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between text-xs">
+                        <span class="font-bold text-white"><i class="fa-solid fa-clock-rotate-left text-sky-400 ml-1.5"></i> سجل الدخول والخروج والوقت التفصيلي</span>
+                        <span class="text-slate-400">يتم حساب ساعات التواجد تلقائياً</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right text-xs">
+                            <thead class="bg-slate-950 text-slate-400 uppercase border-b border-slate-800">
+                                <tr>
+                                    <th class="py-3 px-4">اسم الشخص / الوفد</th>
+                                    <th class="py-3 px-4">الصفة (الفئة)</th>
+                                    <th class="py-3 px-4">البوابة / المكان</th>
+                                    <th class="py-3 px-4">وقت الدخول</th>
+                                    <th class="py-3 px-4">وقت الخروج</th>
+                                    <th class="py-3 px-4">إجمالي الساعات</th>
+                                    <th class="py-3 px-4">الحالة الأمنية</th>
+                                    <th class="py-3 px-4 text-center">أوامر الـ Boss</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mainTableBody" class="divide-y divide-slate-800/70"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 📹 قسم كاميرات المراقبة (CCTV) -->
+            <section id="section-cameras" class="hidden space-y-6">
+                <div class="sec-card rounded-2xl p-5 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-black text-white">غرفة المراقبة التلفزيونية (CCTV Control Matrix)</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">كاميرات أمنية عالية الدقة موزعة على البوابات والمختبرات والمحاضرات.</p>
+                    </div>
+                    <span class="px-3 py-1 rounded bg-emerald-500/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">جميع البوابات آمنة</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="sec-card rounded-2xl p-4 space-y-3">
+                        <div class="flex items-center justify-between text-xs font-bold text-slate-300">
+                            <span class="flex items-center gap-2"><i class="fa-solid fa-video text-sky-400"></i> CAM-01 : البوابة الرئيسية</span>
+                            <span class="text-emerald-400 font-mono text-[11px]">LIVE 1080P ●</span>
+                        </div>
+                        <div class="h-48 rounded-xl bg-slate-950 border border-slate-800 relative flex items-center justify-center overflow-hidden">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                            <div class="absolute bottom-3 right-3 text-[11px] text-slate-300 font-mono">البوابة قيد العمل النظامي</div>
+                            <i class="fa-solid fa-video text-4xl text-slate-800"></i>
+                        </div>
+                    </div>
+                    <div class="sec-card rounded-2xl p-4 space-y-3">
+                        <div class="flex items-center justify-between text-xs font-bold text-slate-300">
+                            <span class="flex items-center gap-2"><i class="fa-solid fa-video text-sky-400"></i> CAM-02 : قاعة المحاضرات A1</span>
+                            <span class="text-emerald-400 font-mono text-[11px]">LIVE 1080P ●</span>
+                        </div>
+                        <div class="h-48 rounded-xl bg-slate-950 border border-slate-800 relative flex items-center justify-center overflow-hidden">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                            <div class="absolute bottom-3 right-3 text-[11px] text-slate-300 font-mono">حضور الطلبة: مسجل آلياً</div>
+                            <i class="fa-solid fa-video text-4xl text-slate-800"></i>
+                        </div>
+                    </div>
+                    <div class="sec-card rounded-2xl p-4 space-y-3">
+                        <div class="flex items-center justify-between text-xs font-bold text-slate-300">
+                            <span class="flex items-center gap-2"><i class="fa-solid fa-video text-purple-400"></i> CAM-03 : مختبر الأبحاث والشركات (VIP)</span>
+                            <span class="text-purple-400 font-mono text-[11px]">SECURE VIP ●</span>
+                        </div>
+                        <div class="h-48 rounded-xl bg-slate-950 border border-slate-800 relative flex items-center justify-center overflow-hidden">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                            <div class="absolute bottom-3 right-3 text-[11px] text-slate-300 font-mono">دخول العلماء والشركات مفعل</div>
+                            <i class="fa-solid fa-video text-4xl text-slate-800"></i>
+                        </div>
+                    </div>
+                    <div class="sec-card rounded-2xl p-4 space-y-3">
+                        <div class="flex items-center justify-between text-xs font-bold text-slate-300">
+                            <span class="flex items-center gap-2"><i class="fa-solid fa-video text-red-400"></i> CAM-04 : المنطقة المحظورة (طوارئ)</span>
+                            <span class="text-red-400 font-mono text-[11px]">RESTRICTED ZONE ●</span>
+                        </div>
+                        <div class="h-48 rounded-xl bg-slate-950 border border-red-500/30 relative flex items-center justify-center overflow-hidden">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                            <div class="absolute bottom-3 right-3 text-[11px] text-red-300 font-mono">حساس الليزر والإنذار نشط</div>
+                            <i class="fa-solid fa-video text-4xl text-slate-800"></i>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 🎓 قسم الحضور الأكاديمي -->
+            <section id="section-lectures" class="hidden space-y-6">
+                <div class="sec-card rounded-2xl p-5 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-black text-white">سجل الحضور الأكاديمي ومحاضرات الطلبة</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">ربط بوابات القاعات بجدول المحاضرات لتسجيل دخول وخروج الطلبة تلقائياً.</p>
+                    </div>
+                    <button onclick="openAddModalForStudent()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl transition">
+                        <i class="fa-solid fa-user-graduate ml-1"></i> تسجيل طالب جديد
+                    </button>
+                </div>
+
+                <div class="sec-card rounded-2xl overflow-hidden">
+                    <div class="p-4 border-b border-slate-800 bg-slate-900/50 text-xs font-bold text-white">
+                        قائمة المحاضرات النشطة اليوم
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right text-xs">
+                            <thead class="bg-slate-950 text-slate-400 uppercase border-b border-slate-800">
+                                <tr>
+                                    <th class="py-3 px-4">اسم الطالب</th>
+                                    <th class="py-3 px-4">المحاضرة / المادة</th>
+                                    <th class="py-3 px-4">القاعة الدراسية</th>
+                                    <th class="py-3 px-4">وقت الدخول</th>
+                                    <th class="py-3 px-4">وقت الخروج</th>
+                                    <th class="py-3 px-4">حالة الحضور</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lecturesTableBody" class="divide-y divide-slate-800/70"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 🔬 قسم الشركات والعلماء -->
+            <section id="section-companies" class="hidden space-y-6">
+                <div class="sec-card rounded-2xl p-5 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-base font-black text-white">إدارة الوفود، الشركات، والعلماء الباحثين</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">منح الصلاحيات الخاصة، تتبع ساعات العمل المشتركة، وإدارة المختبرات السرية.</p>
+                    </div>
+                    <button onclick="openAddModalForVIP()" class="px-4 py-2 bg-purple-500 hover:bg-purple-400 text-slate-950 font-black text-xs rounded-xl transition">
+                        <i class="fa-solid fa-atom ml-1"></i> إضافة عالم أو شركة
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="vipCardsContainer"></div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- فورم الإضافة والتحكم -->
+    <div id="addModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="sec-card w-full max-w-lg rounded-3xl overflow-hidden border border-sky-500/30">
+            <div class="p-5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                <h3 class="font-black text-white text-sm">إدارة حركة دخول وخروج شخص (أمر الـ Boss)</h3>
+                <button onclick="closeAddModal()" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form onsubmit="saveRecord(event)" class="p-6 space-y-4 text-xs">
+                <input type="hidden" id="editId">
+                <div>
+                    <label class="block text-slate-300 font-bold mb-1">اسم الشخص أو اسم الوفد:</label>
+                    <input id="modalName" required type="text" placeholder="مثال: د. علي / شركة التقنية..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-sky-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-slate-300 font-bold mb-1">الفئة / الصفة:</label>
+                        <select id="modalRole" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-sky-500">
+                            <option value="طالب">طالب جامعي</option>
+                            <option value="عالم">عالم / باحث</option>
+                            <option value="شركة">وفد شركة</option>
+                            <option value="زائر">زائر عادي</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-bold mb-1">البوابة أو المكان:</label>
+                        <select id="modalZone" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:outline-none focus:border-sky-500">
+                            <option value="البوابة الرئيسية">البوابة الرئيسية</option>
+                            <option value="قاعة المحاضرات A1">قاعة المحاضرات A1</option>
+                            <option value="مختبر الذكاء الاصطناعي">مختبر الذكاء الاصطناعي</option>
+                            <option value="مختبر الأبحاث النووية (محظور)">مختبر الأبحاث النووية (محظور)</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-bold mb-1">المادة أو سبب الزيارة:</label>
+                    <input id="modalActivity" type="text" placeholder="مثال: محاضرة أمن الشبكات / بحث مشترك..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-sky-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-slate-300 font-bold mb-1">وقت الدخول:</label>
+                        <input id="modalEntry" required type="time" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white font-mono focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-bold mb-1">وقت الخروج (فارغ إذا بالداخل):</label>
+                        <input id="modalExit" type="time" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-white font-mono focus:outline-none">
+                    </div>
+                </div>
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+                    <button type="button" onclick="closeAddModal()" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-bold">إلغاء</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-sky-500 text-slate-950 font-black">حفظ السجل</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let records = [
+            { id: 1, name: 'أحمد محمد العراقي', role: 'طالب', zone: 'قاعة المحاضرات A1', activity: 'محاضرة أمن الشبكات', entryTime: '08:30', exitTime: '10:15', status: 'حاضر نظامي' },
+            { id: 2, name: 'د. سارة المنصور', role: 'عالم', zone: 'مختبر الأبحاث النووية (محظور)', activity: 'بحث فيزياء الكم', entryTime: '09:00', exitTime: '', status: 'تصريح VIP' },
+            { id: 3, name: 'شركة أوروك للتقنية', role: 'شركة', zone: 'مختبر الذكاء الاصطناعي', activity: 'اجتماع تطوير البرمجيات', entryTime: '10:00', exitTime: '12:30', status: 'معتمد' },
+            { id: 4, name: 'زيدون كريم', role: 'طالب', zone: 'قاعة المحاضرات A1', activity: 'محاضرة هياكل البيانات', entryTime: '11:15', exitTime: '', status: 'حاضر بالداخل' },
+            { id: 5, name: 'حيدر جاسم', role: 'زائر', zone: 'البوابة الرئيسية', activity: 'مراجعة عمادة الكلية', entryTime: '12:00', exitTime: '13:00', status: 'أنهى الزيارة' }
+        ];
+
+        let currentFilter = 'all';
+
+        function startClock() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('liveClock').textContent = now.toTimeString().split(' ')[0];
+            }, 1000);
+        }
+
+        function calculateHours(entry, exit) {
+            if (!entry) return '-';
+            if (!exit) return 'متواجد الآن 🟢';
+            const [eh, em] = entry.split(':').map(Number);
+            const [xh, xm] = exit.split(':').map(Number);
+            let mins = (xh * 60 + xm) - (eh * 60 + em);
+            if (mins < 0) mins += 1440;
+            const h = Math.floor(mins / 60);
+            const m = mins % 60;
+            return h > 0 ? `${h} ساعة و ${m} دقيقة` : `${m} دقيقة`;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('mainTableBody');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            tbody.innerHTML = '';
+
+            let insideCount = 0, studentsCount = 0, vipsCount = 0, alertsCount = 0;
+
+            const filtered = records.filter(r => {
+                const matchRole = currentFilter === 'all' || r.role === currentFilter;
+                const matchSearch = r.name.toLowerCase().includes(search) || r.zone.toLowerCase().includes(search);
+                return matchRole && matchSearch;
+            });
+
+            records.forEach(r => {
+                if (!r.exitTime) insideCount++;
+                if (r.role === 'طالب') studentsCount++;
+                if (['عالم', 'شركة'].includes(r.role)) vipsCount++;
+                if (r.status.includes('إنذار') || r.status.includes('محظور')) alertsCount++;
+            });
+
+            document.getElementById('statInside').textContent = insideCount;
+            document.getElementById('statStudents').textContent = studentsCount;
+            document.getElementById('statVips').textContent = vipsCount;
+            document.getElementById('statAlerts').textContent = alertsCount;
+
+            filtered.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-900/60 transition';
+                const roleBadge = r.role === 'طالب' ? 'bg-sky-500/15 text-sky-300' : (r.role === 'عالم' ? 'bg-purple-500/15 text-purple-300' : (r.role === 'شركة' ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300'));
+                
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-bold text-white">${r.name}<div class="text-[10px] text-slate-400 font-normal">${r.activity}</div></td>
+                    <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-[11px] font-bold ${roleBadge}">${r.role}</span></td>
+                    <td class="py-3 px-4 text-slate-300">${r.zone}</td>
+                    <td class="py-3 px-4 font-mono text-sky-400">${r.entryTime}</td>
+                    <td class="py-3 px-4 font-mono text-amber-400">${r.exitTime || 'متواجد'}</td>
+                    <td class="py-3 px-4 font-bold text-emerald-400">${calculateHours(r.entryTime, r.exitTime)}</td>
+                    <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-semibold">${r.status}</span></td>
+                    <td class="py-3 px-4 text-center">
+                        <div class="flex items-center justify-center gap-1.5">
+                            ${!r.exitTime ? `<button onclick="markExit(${r.id})" class="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500 hover:text-slate-950 font-bold">خروج</button>` : ''}
+                            <button onclick="deleteRecord(${r.id})" class="w-7 h-7 rounded bg-red-500/15 text-red-400 hover:bg-red-500 hover:text-white flex items-center justify-center"><i class="fa-solid fa-trash text-[11px]"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            renderLecturesTable();
+            renderVipCards();
+        }
+
+        function renderLecturesTable() {
+            const tbody = document.getElementById('lecturesTableBody');
+            tbody.innerHTML = '';
+            records.filter(r => r.role === 'طالب').forEach(s => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-900/60">
+                        <td class="py-3 px-4 font-bold text-white">${s.name}</td>
+                        <td class="py-3 px-4 text-slate-300">${s.activity}</td>
+                        <td class="py-3 px-4 text-sky-400">${s.zone}</td>
+                        <td class="py-3 px-4 font-mono">${s.entryTime}</td>
+                        <td class="py-3 px-4 font-mono">${s.exitTime || 'بالقاعة'}</td>
+                        <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">حضور آلي</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderVipCards() {
+            const grid = document.getElementById('vipCardsContainer');
+            grid.innerHTML = '';
+            records.filter(r => ['عالم', 'شركة'].includes(r.role)).forEach(v => {
+                grid.innerHTML += `
+                    <div class="sec-card rounded-2xl p-5 space-y-3 border-t-2 border-t-purple-500">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold">${v.role}</span>
+                            <span class="font-mono text-sky-400">${v.entryTime}</span>
+                        </div>
+                        <h4 class="font-black text-white text-base">${v.name}</h4>
+                        <p class="text-xs text-slate-400">${v.zone} — ${v.activity}</p>
+                        <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
+                            <span class="text-emerald-400 font-bold">المدة: ${calculateHours(v.entryTime, v.exitTime)}</span>
+                            <button onclick="markExit(${v.id})" class="text-sky-400 font-bold hover:underline">تسجيل خروج</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function filterRecords(f) {
+            currentFilter = f;
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.className = b.dataset.f === f ? 'filter-btn px-4 py-2 rounded-xl bg-sky-500 text-slate-950 font-bold transition' : 'filter-btn px-4 py-2 rounded-xl bg-slate-900 text-slate-300 hover:bg-slate-800 transition';
+            });
+            renderTable();
+        }
+
+        function markExit(id) {
+            const r = records.find(item => item.id === id);
+            if (r) {
+                r.exitTime = new Date().toTimeString().slice(0, 5);
+                r.status = 'أنهى الزيارة / غادر';
+                renderTable();
+            }
+        }
+
+        function deleteRecord(id) {
+            records = records.filter(item => item.id !== id);
+            renderTable();
+        }
+
+        function openAddModal() {
+            document.getElementById('editId').value = '';
+            document.getElementById('modalName').value = '';
+            document.getElementById('modalActivity').value = '';
+            document.getElementById('modalEntry').value = new Date().toTimeString().slice(0, 5);
+            document.getElementById('modalExit').value = '';
+            document.getElementById('addModal').classList.remove('hidden');
+        }
+
+        function openAddModalForStudent() { openAddModal(); document.getElementById('modalRole').value = 'طالب'; document.getElementById('modalZone').value = 'قاعة المحاضرات A1'; }
+        function openAddModalForVIP() { openAddModal(); document.getElementById('modalRole').value = 'عالم'; document.getElementById('modalZone').value = 'مختبر الأبحاث النووية (محظور)'; }
+        function closeAddModal() { document.getElementById('addModal').classList.add('hidden'); }
+
+        function saveRecord(e) {
+            e.preventDefault();
+            records.push({
+                id: Date.now(),
+                name: document.getElementById('modalName').value,
+                role: document.getElementById('modalRole').value,
+                zone: document.getElementById('modalZone').value,
+                activity: document.getElementById('modalActivity').value || 'زيارة نظامية',
+                entryTime: document.getElementById('modalEntry').value,
+                exitTime: document.getElementById('modalExit').value,
+                status: document.getElementById('modalExit').value ? 'منتهي' : 'متواجد بالداخل'
+            });
+            closeAddModal();
+            renderTable();
+        }
+
+        function triggerSimulatedIntruder() {
+            document.getElementById('emergencyBanner').classList.remove('hidden');
+            document.getElementById('emergencyText').textContent = 'محاولة تسلل في مختبر الأبحاث النووية بواسطة شخص غير مصرح له!';
+            records.push({
+                id: Date.now(),
+                name: 'مشتبه به / مجهول الهوية',
+                role: 'زائر',
+                zone: 'مختبر الأبحاث النووية (محظور)',
+                activity: 'محاولة اختراق أمني',
+                entryTime: new Date().toTimeString().slice(0, 5),
+                exitTime: '',
+                status: '⚠️ إنذار دخيل'
+            });
+            renderTable();
+        }
+
+        function resolveEmergency() { alert('تم اعتماد الشخص كزائر رسمي بأمر الـ Boss وإيقاف حالة الطوارئ.'); dismissEmergency(); }
+        function dismissEmergency() { document.getElementById('emergencyBanner').classList.add('hidden'); }
+
+        function exportCSVReport() {
+            let csv = 'الاسم,الصفة,المكان,السبب,الدخول,الخروج,الحالة\n';
+            records.forEach(r => { csv += `"${r.name}","${r.role}","${r.zone}","${r.activity}","${r.entryTime}","${r.exitTime || 'بالداخل'}","${r.status}"\n`; });
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'attendance-security-report.csv'; a.click();
+        }
+
+        function switchTab(tab) {
+            ['dashboard', 'cameras', 'lectures', 'companies'].forEach(t => {
+                document.getElementById(`section-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).className = 'nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-300 hover:bg-slate-800/60 transition';
+            });
+            document.getElementById(`section-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}`).className = 'nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-sky-500/15 text-sky-400 border border-sky-500/30';
+        }
+
+        window.addEventListener('DOMContentLoaded', () => { startClock(); renderTable(); });
+    </script>
+</body>
+</html>
